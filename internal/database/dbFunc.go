@@ -1,7 +1,7 @@
 package database
 
 import (
-	"github.com/andro-kes/SubAggr/utils"
+	"github.com/andro-kes/SubAggr/internal/utils"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )

@@ -1,0 +1,230 @@
+basePath: /
+definitions:
+  models.Filters:
+    properties:
+      end_date:
+        description: MM-YYYY
+        type: string
+      service_name:
+        type: string
+      start_date:
+        description: MM-YYYY
+        type: string
+      user_id:
+        type: string
+    type: object
+  models.Subs:
+    type: object
+host: localhost:8000
+info:
+  contact: {}
+  description: API для управления подписками пользователей
+  title: Subscriptions API
+  version: "1.0"
+paths:
+  /SUBS:
+    get:
+      consumes:
+      - application/json
+      description: Возвращает список подписок с возможностью фильтрации
+      parameters:
+      - description: Фильтр по ID пользователя
+        in: query
+        name: user_id
+        type: string
+      - description: Фильтр по названию сервиса
+        in: query
+        name: service_name
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список подписок
+          schema:
+            items:
+              $ref: '#/definitions/models.Subs'
+            type: array
+      summary: Получить список подписок
+      tags:
+      - Subscriptions
+    post:
+      consumes:
+      - application/json
+      description: Добавляет новую запись о подписке пользователя
+      parameters:
+      - description: Данные подписки
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.Subs'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Успешно созданная подписка
+          schema:
+            $ref: '#/definitions/models.Subs'
+        "400":
+          description: Подписка уже существует
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Создать новую подписку
+      tags:
+      - Subscriptions
+  /SUBS/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет существующую подписку по ID
+      parameters:
+      - description: ID подписки
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешное удаление
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Невалидный ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Удалить подписку
+      tags:
+      - Subscriptions
+    get:
+      consumes:
+      - application/json
+      description: Возвращает подписку по указанному ID
+      parameters:
+      - description: ID подписки
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные подписки
+          schema:
+            $ref: '#/definitions/models.Subs'
+        "400":
+          description: Невалидный ID
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Подписка не найдена
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Получить подписку
+      tags:
+      - Subscriptions
+    put:
+      consumes:
+      - application/json
+      description: Обновляет существующую подписку по ID
+      parameters:
+      - description: ID подписки
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Обновленные данные подписки
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.Subs'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Обновленная подписка
+          schema:
+            $ref: '#/definitions/models.Subs'
+        "400":
+          description: Ошибка валидации
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Обновить подписку
+      tags:
+      - Subscriptions
+  /SUMSUBS:
+    post:
+      consumes:
+      - application/json
+      description: Возвращает сумму цен подписок за период с фильтрацией
+      parameters:
+      - description: Параметры фильтрации
+        in: body
+        name: input
+        required: true
+        schema:
+          $ref: '#/definitions/models.Filters'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Сумма подписок или сообщение
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Ошибка валидации
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Ошибка сервера
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Сумма подписок
+      tags:
+      - Aggregations
+swagger: "2.0"

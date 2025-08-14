@@ -28,7 +28,7 @@ false - есть ошибка
 func CheckError(c *gin.Context, err error, msg string) bool {
 	if err != nil {
 		log.Println(msg)
-		c.JSON(400, gin.H{"Error": err.Error})
+		c.JSON(400, gin.H{"Error": err.Error()})
 		return false
 	}
 	return true
