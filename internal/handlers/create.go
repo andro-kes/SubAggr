@@ -22,18 +22,23 @@ import (
 // @Failure 500 {object} map[string]string "Ошибка сервера"
 // @Router /SUBS [post]
 func CreateNote(c *gin.Context) {
-	var sub models.Subs
-	if !utils.CheckError(c, c.ShouldBindJSON(&sub), "Невалидные данные для создания записи") {
+	var input models.Input
+	if !utils.CheckError(c, c.ShouldBindJSON(&input), "Невалидные данные для создания записи") {
 		return
 	}
 
-	if !utils.IsValid(models.IsValid(&sub), "Невалидная дата") {
+	if !utils.Ok(input.IsValid(), "Невалидная дата") {
 		c.JSON(400, gin.H{"Error": "Невалидная дата"})
 		return
 	}
 
+	sub, err := input.NewSub()
+	if !utils.CheckError(c, err, "Не удалось создать подписку") {
+		return
+	}
+
 	if DB := database.GetDB(c); DB != nil {
-		if !utils.IsValid(IsUnique(DB, sub), "Такая подписка уже есть") {
+		if !utils.Ok(isUnique(DB, sub), "Такая подписка уже есть") {
 			c.JSON(400, gin.H{"Error": "Unique error"})
 			return
 		}
@@ -46,7 +51,7 @@ func CreateNote(c *gin.Context) {
 	c.JSON(201, sub)
 }
 
-func IsUnique(db *gorm.DB, sub models.Subs) bool {
+func isUnique(db *gorm.DB, sub models.Subs) bool {
 	var existingSub models.Subs
 	db.Where("user_id = ? AND service_name = ?", sub.UserId, sub.ServiceName).First(&existingSub)
 	return existingSub.ID == 0

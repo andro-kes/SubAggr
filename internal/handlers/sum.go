@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"log"
 	"time"
 
 	"github.com/andro-kes/SubAggr/internal/database"
 	"github.com/andro-kes/SubAggr/internal/models"
 	"github.com/andro-kes/SubAggr/internal/utils"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -16,7 +18,7 @@ import (
 // @Tags Aggregations
 // @Accept json
 // @Produce json
-// @Param input body models.Filters true "Параметры фильтрации"
+// @Param input body models.Filters true "Параметры фильтрации" example:{"service_name":"Yandex Plus","user_id":"60601fee-2bf1-4721-ae6f-7636e79a0cba","start_date":"07-2025","end_date":"12-2025"}
 // @Success 200 {object} map[string]interface{} "Сумма подписок или сообщение"
 // @Failure 400 {object} map[string]string "Ошибка валидации"
 // @Failure 500 {object} map[string]string "Ошибка сервера"
@@ -27,7 +29,7 @@ func SumPriceSubs(c *gin.Context) {
 		return
 	}
 
-	if !utils.IsValid(models.IsValid(&filters), "Невалидная дата") {
+	if !utils.Ok(filters.IsValid(), "Невалидная дата") {
 		c.JSON(400, gin.H{"Error": "Невалидная дата"})
 		return
 	}
@@ -37,8 +39,14 @@ func SumPriceSubs(c *gin.Context) {
 		return
 	}
 
-	filterSubs := filter(DB, filters)
-	sum := summary(filterSubs)
+	sub, err := filters.NewSub()
+	if !utils.CheckError(c, err, "Не удалось организовать данные для фильтрации") {
+		return
+	}
+
+	filterSubs := filter(DB, sub)
+	log.Printf("Найдено активных подписок: %d\n", len(filterSubs))
+	sum := summary(filterSubs, sub)
 
 	if sum == 0{
 		c.JSON(200, gin.H{"Message": "Нет активных подписок"})
@@ -47,53 +55,59 @@ func SumPriceSubs(c *gin.Context) {
 	c.JSON(200, gin.H{"Сумма подписок": sum})
 }
 
-func filter(db *gorm.DB, filters models.Filters) []models.Subs {
+// Находит активные подписки, учитывая фильтры
+func filter(db *gorm.DB, filters models.Subs) []models.Subs {
 	var sumSubs []models.Subs
+	query := db
 
-	start, end, err := parseTime(filters.StartDate, filters.EndDate)
-	if err != nil {
-		return sumSubs
+	if filters.UserId != uuid.Nil {
+		query = query.Where("user_id = ?", filters.UserId)
 	}
+	if filters.ServiceName != "" {
+		query = query.Where("service_name = ?", filters.ServiceName)
+	}
+	query = query.Where("start_date <= ?", filters.EndDate)
+    query = query.Where("(end_date >= ? OR end_date IS NULL)", filters.StartDate)
 
-    db.Where(
-        "user_id = ? AND service_name = ? AND start_date <= ? AND (end_date >= ? OR end_date IS NULL)",
-        filters.UserId,
-        filters.ServiceName,
-        end,
-        start,
-    ).Find(&sumSubs)
-
+	query.Find(&sumSubs)
+   
 	return sumSubs
 }
 
-func parseTime(startDate, endDate string) (time.Time, time.Time, error) {
-	start, err := time.Parse("01-2006", startDate)
-	if !utils.IsValid(err == nil, "Не удалось распарсить дату старта при фильтрации") {
-		return time.Now(), time.Now(), err
-	}
-	end, err := time.Parse("01-2006", endDate)
-	if !utils.IsValid(err == nil, "Не удалось распарсить дату окончания при фильтрации") {
-		return time.Now(), time.Now(), err
-	}
-	return start, end, nil
-}
-
-func summary(subs []models.Subs) int {
+// Возвращает стоимость подписки за выбранный период
+func summary(subs []models.Subs, filters models.Subs) int {
 	sum := 0
+	var start, end time.Time
 	for _, sub := range subs {
-		start, end, err := parseTime(sub.StartDate, sub.EndDate)
-		if err != nil {
-			return sum
+		if sub.StartDate.After(filters.StartDate) {
+			start = sub.StartDate
+		} else {
+			start = filters.StartDate
 		}
+
+		if sub.EndDate == nil {
+			end = *filters.EndDate
+		} else if sub.EndDate.Before(*filters.EndDate) {
+			end = *sub.EndDate
+		} else {
+			end = *filters.EndDate
+		}
+
 		sum += calculatePrice(sub.Price, start, end)
 	}
 	return sum
 }
 
-const NUMBER_OF_HOURS_PER_MONTH = 720
-
 func calculatePrice(price int, start, end time.Time) int {
-	duration := end.Sub(start)
-	commonPrice := int(duration.Hours())
-	return (commonPrice / NUMBER_OF_HOURS_PER_MONTH) * price
+	month := betweenMonth(start, end)
+	return month * price
+}
+
+func betweenMonth(start, end time.Time) int {
+	cnt := 0
+	for !start.Equal(end) {
+		cnt += 1
+		start = start.AddDate(0, 1, 0)
+	}
+	return cnt
 }

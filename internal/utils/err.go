@@ -12,7 +12,7 @@ func MustNotError(err error, msg string) {
 	}
 }
 
-func IsValid(ok bool, msg string) bool {
+func Ok(ok bool, msg string) bool {
 	if !ok {
 		log.Println(msg)
 		return false

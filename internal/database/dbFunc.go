@@ -8,11 +8,11 @@ import (
 
 func GetDB(c *gin.Context) *gorm.DB {
 	db, ok := c.Get("DB")
-	if !utils.IsValid(ok, "Контекст не содержит базу данных") {
+	if !utils.Ok(ok, "Контекст не содержит базу данных") {
 		return nil
 	}
 	DB, ok := db.(*gorm.DB)
-	if !utils.IsValid(ok, "Невалидный тип данных для БД") {
+	if !utils.Ok(ok, "Невалидный тип данных для БД") {
 		return nil
 	}
 	return DB

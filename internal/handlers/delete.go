@@ -31,7 +31,7 @@ func DeleteNote(c *gin.Context) {
 	}
 
 	if DB := database.GetDB(c); DB != nil {
-		obj := DB.Delete(models.Subs{}, uint(id))
+		obj := DB.Delete(&models.Subs{}, id)
 		if !utils.CheckError(c, obj.Error, "Не удалось найти запись с таким id") {
 			return
 		}

@@ -18,6 +18,7 @@ import (
 // @Param service_name query string false "Фильтр по названию сервиса"
 // @Success 200 {array} models.Subs "Список подписок"
 // @Router /SUBS [get]
+// @Failure 400 {object} map[string]string "Ошибка сервера"
 func ListNotes(c *gin.Context) {
 	var notes []models.Subs
 	query := database.GetDB(c).Model(&models.Subs{})
