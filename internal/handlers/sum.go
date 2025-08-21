@@ -106,8 +106,6 @@ func calculatePrice(price int, start, end time.Time) int {
 	return months * price
 }
 
-// monthsBetween returns the number of whole months between start (inclusive) and end (exclusive),
-// matching previous loop semantics that incremented one month at a time until start == end.
 func monthsBetween(start, end time.Time) int {
 	if !start.Before(end) {
 		return 0
