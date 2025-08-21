@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log"
+	"log/slog"
 	"strconv"
 
 	"github.com/andro-kes/SubAggr/internal/database"
@@ -16,10 +16,11 @@ import (
 // @Tags Subscriptions
 // @Accept json
 // @Produce json
+// @Param id path string true "ID подписки"
 // @Param input body models.Updates true "Обновленные данные подписки"
-// @Param input body models.Subs true "Обновленные данные подписки"
 // @Success 200 {object} models.Subs "Обновленная подписка"
 // @Failure 400 {object} map[string]string "Ошибка валидации"
+// @Failure 404 {object} map[string]string "Подписка не найдена"
 // @Failure 500 {object} map[string]string "Ошибка сервера"
 // @Router /SUBS/{id} [put]
 func UpdateNote(c *gin.Context) {
@@ -30,7 +31,7 @@ func UpdateNote(c *gin.Context) {
 	}
 
 	if !utils.Ok(updates.IsValid(), "Невалидная дата") {
-		c.JSON(400, gin.H{"Error": "Невалидная дата"})
+		c.JSON(400, gin.H{"error": "invalid date"})
 		return
 	}
 
@@ -51,11 +52,12 @@ func UpdateNote(c *gin.Context) {
 	}
 
 	if len(data) == 0 {
-		c.JSON(200, gin.H{"Message": "No changes"})
+		c.JSON(200, gin.H{"message": "no changes"})
+		return
 	}
 
 	ID := c.Param("id")
-	log.Printf("Обновление записи с ID: %s\n", ID)
+	slog.Debug("Обновление записи", slog.String("id", ID))
 
 	id, err := strconv.ParseUint(ID, 10, 64)
 	if !utils.CheckError(c, err, "Невалидный id") {
@@ -65,6 +67,10 @@ func UpdateNote(c *gin.Context) {
 	if DB := database.GetDB(c); DB != nil {
 		obj := DB.Model(models.Subs{}).Where("id = ?", id).Updates(data)
 		if !utils.CheckError(c, obj.Error, "Не удалось обновить данные записи") {
+			return
+		}
+		if obj.RowsAffected == 0 {
+			c.JSON(404, gin.H{"error": "subscription not found"})
 			return
 		}
 	}

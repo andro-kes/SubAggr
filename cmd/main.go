@@ -1,6 +1,10 @@
 package main
 
 import (
+	"log/slog"
+	"os"
+	"strings"
+
 	"github.com/andro-kes/SubAggr/internal/app"
 )
 
@@ -10,5 +14,23 @@ import (
 // @host localhost:8000
 // @BasePath /
 func main() {
+	setupLogger()
 	app.Run()
+}
+
+func setupLogger() {
+	level := os.Getenv("LOG_LEVEL")
+	var lvl slog.Level
+	switch strings.ToLower(level) {
+	case "debug":
+		lvl = slog.LevelDebug
+	case "warn":
+		lvl = slog.LevelWarn
+	case "error":
+		lvl = slog.LevelError
+	default:
+		lvl = slog.LevelInfo
+	}
+	handler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: lvl})
+	slog.SetDefault(slog.New(handler))
 }
