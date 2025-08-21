@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log"
+	"log/slog"
 	"strconv"
 
 	"github.com/andro-kes/SubAggr/internal/database"
@@ -21,7 +21,7 @@ import (
 // @Param offset query int false "Смещение для пагинации"
 // @Success 200 {array} models.Subs "Список подписок"
 // @Router /SUBS [get]
-// @Failure 400 {object} map[string]string "Ошибка сервера"
+// @Failure 500 {object} map[string]string "Ошибка сервера"
 func ListNotes(c *gin.Context) {
 	var notes []models.Subs
 	query := database.GetDB(c).Model(&models.Subs{})
@@ -54,8 +54,8 @@ func ListNotes(c *gin.Context) {
 	query = query.Select("id, service_name, price, user_id, start_date, end_date")
 
 	if err := query.Limit(limit).Offset(offset).Find(&notes).Error; err != nil {
-		log.Println("Ошибка выборки списка:", err)
-		c.JSON(400, gin.H{"Error": "Ошибка сервера"})
+		slog.Error("Ошибка выборки списка", slog.String("error", err.Error()))
+		c.JSON(500, gin.H{"error": "internal server error"})
 		return
 	}
 

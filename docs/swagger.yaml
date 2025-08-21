@@ -67,6 +67,12 @@ paths:
           schema:
             $ref: '#/definitions/models.Subs'
         "400":
+          description: Невалидные входные данные
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
           description: Подписка уже существует
           schema:
             additionalProperties:
@@ -183,6 +189,12 @@ paths:
             additionalProperties:
               type: string
             type: object
+        "404":
+          description: Подписка не найдена
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Ошибка сервера
           schema:
@@ -192,7 +204,7 @@ paths:
       summary: Обновить подписку
       tags:
       - Subscriptions
-  /SUMSUBS:
+  /SUBS/SUMMARY:
     post:
       consumes:
       - application/json

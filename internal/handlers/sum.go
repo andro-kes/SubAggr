@@ -1,9 +1,6 @@
 package handlers
 
 import (
-	"log"
-	"time"
-
 	"github.com/andro-kes/SubAggr/internal/database"
 	"github.com/andro-kes/SubAggr/internal/models"
 	"github.com/andro-kes/SubAggr/internal/utils"
@@ -22,7 +19,7 @@ import (
 // @Success 200 {object} map[string]interface{} "Сумма подписок или сообщение"
 // @Failure 400 {object} map[string]string "Ошибка валидации"
 // @Failure 500 {object} map[string]string "Ошибка сервера"
-// @Router /SUMSUBS [post]
+// @Router /SUBS/SUMMARY [post]
 func SumPriceSubs(c *gin.Context) {
 	var filters models.Filters
 	if !utils.CheckError(c, c.ShouldBindJSON(&filters), "Не удалось связать фильтры") {
@@ -30,7 +27,7 @@ func SumPriceSubs(c *gin.Context) {
 	}
 
 	if !utils.Ok(filters.IsValid(), "Невалидная дата") {
-		c.JSON(400, gin.H{"Error": "Невалидная дата"})
+		c.JSON(400, gin.H{"error": "invalid date"})
 		return
 	}
 
@@ -44,15 +41,16 @@ func SumPriceSubs(c *gin.Context) {
 		return
 	}
 
-	filterSubs := filter(DB, sub)
-	log.Printf("Найдено активных подписок: %d\n", len(filterSubs))
-	sum := summary(filterSubs, sub)
-
-	if sum == 0{
-		c.JSON(200, gin.H{"Message": "Нет активных подписок"})
+	total, err := aggregateTotal(DB, sub)
+	if !utils.CheckError(c, err, "Ошибка агрегации суммы") {
 		return
 	}
-	c.JSON(200, gin.H{"Сумма подписок": sum})
+
+	if total == 0 {
+		c.JSON(200, gin.H{"message": "no active subscriptions"})
+		return
+	}
+	c.JSON(200, gin.H{"total": total})
 }
 
 // Находит активные подписки, учитывая фильтры
@@ -77,40 +75,51 @@ func filter(db *gorm.DB, filters models.Subs) []models.Subs {
 	return sumSubs
 }
 
-// Возвращает стоимость подписки за выбранный период
-func summary(subs []models.Subs, filters models.Subs) int {
-	sum := 0
-	var start, end time.Time
-	for _, sub := range subs {
-		if sub.StartDate.After(filters.StartDate) {
-			start = sub.StartDate
-		} else {
-			start = filters.StartDate
-		}
+// Выполняет агрегацию суммы в БД
+func aggregateTotal(db *gorm.DB, filters models.Subs) (int64, error) {
+	var total int64
+	query := `
+WITH params AS (
+    SELECT date_trunc('month', $1::date) AS start_month,
+           date_trunc('month', $2::date) AS end_month
+), eligible AS (
+    SELECT s.price,
+           GREATEST(date_trunc('month', s.start_date), p.start_month) AS from_month,
+           LEAST(date_trunc('month', COALESCE(s.end_date, p.end_month)), p.end_month) AS to_month
+    FROM subs s
+    CROSS JOIN params p
+    WHERE s.start_date <= p.end_month
+      AND (s.end_date IS NULL OR s.end_date >= p.start_month)
+      AND ($3::uuid IS NULL OR s.user_id = $3::uuid)
+      AND ($4::text IS NULL OR $4 = '' OR s.service_name = $4)
+), months AS (
+    SELECT price,
+           COUNT(*)::int AS m
+    FROM eligible e
+    JOIN generate_series(
+        e.from_month,
+        e.to_month - interval '1 month',
+        interval '1 month'
+    ) gs ON TRUE
+    WHERE e.to_month >= e.from_month
+    GROUP BY price
+)
+SELECT COALESCE(SUM(price * m), 0) AS total
+FROM months;`
 
-		if sub.EndDate == nil {
-			end = *filters.EndDate
-		} else if sub.EndDate.Before(*filters.EndDate) {
-			end = *sub.EndDate
-		} else {
-			end = *filters.EndDate
-		}
-
-		sum += calculatePrice(sub.Price, start, end)
+	var userParam interface{}
+	if filters.UserId != uuid.Nil {
+		userParam = filters.UserId
+	} else {
+		userParam = nil
 	}
-	return sum
-}
-
-func calculatePrice(price int, start, end time.Time) int {
-	months := monthsBetween(start, end)
-	return months * price
-}
-
-func monthsBetween(start, end time.Time) int {
-	if !start.Before(end) {
-		return 0
+	var serviceParam interface{}
+	if filters.ServiceName != "" {
+		serviceParam = filters.ServiceName
+	} else {
+		serviceParam = nil
 	}
-	y1, m1, _ := start.Date()
-	y2, m2, _ := end.Date()
-	return int((y2-y1)*12) + int(m2-m1)
+
+	err := db.Raw(query, filters.StartDate, *filters.EndDate, userParam, serviceParam).Scan(&total).Error
+	return total, err
 }

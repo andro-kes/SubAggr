@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"log"
+	"log/slog"
 	"strconv"
 
 	"github.com/andro-kes/SubAggr/internal/database"
@@ -24,7 +24,7 @@ import (
 // @Router /SUBS/{id} [get]
 func ReadNote(c *gin.Context) {
 	ID := c.Param("id")
-	log.Printf("Чтение записи с ID: %s\n", ID)
+	slog.Debug("Чтение записи", slog.String("id", ID))
 
 	id, err := strconv.ParseUint(ID, 10, 64)
 	if !utils.CheckError(c, err, "Невалидный id") {

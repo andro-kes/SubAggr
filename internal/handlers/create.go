@@ -14,11 +14,10 @@ import (
 // @Tags Subscriptions
 // @Accept json
 // @Produce json
-// @Param input body models.Subs true "Данные подписки"
+// @Param input body models.Input true "Данные подписки"
 // @Success 201 {object} models.Subs "Успешно созданная подписка"
 // @Failure 400 {object} map[string]string "Невалидные входные данные"
-// @Failure 400 {object} map[string]string "Невалидная дата"
-// @Failure 400 {object} map[string]string "Подписка уже существует"
+// @Failure 409 {object} map[string]string "Подписка уже существует"
 // @Failure 500 {object} map[string]string "Ошибка сервера"
 // @Router /SUBS [post]
 func CreateNote(c *gin.Context) {
@@ -28,7 +27,7 @@ func CreateNote(c *gin.Context) {
 	}
 
 	if !utils.Ok(input.IsValid(), "Невалидная дата") {
-		c.JSON(400, gin.H{"Error": "Невалидная дата"})
+		c.JSON(400, gin.H{"error": "invalid date"})
 		return
 	}
 
@@ -39,7 +38,7 @@ func CreateNote(c *gin.Context) {
 
 	if DB := database.GetDB(c); DB != nil {
 		if !utils.Ok(isUnique(DB, sub), "Такая подписка уже есть") {
-			c.JSON(400, gin.H{"Error": "Unique error"})
+			c.JSON(409, gin.H{"error": "unique constraint violation"})
 			return
 		}
 
