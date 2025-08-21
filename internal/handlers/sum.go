@@ -67,10 +67,13 @@ func filter(db *gorm.DB, filters models.Subs) []models.Subs {
 		query = query.Where("service_name = ?", filters.ServiceName)
 	}
 	query = query.Where("start_date <= ?", filters.EndDate)
-    query = query.Where("(end_date >= ? OR end_date IS NULL)", filters.StartDate)
+	query = query.Where("(end_date >= ? OR end_date IS NULL)", filters.StartDate)
+
+	// Select only what we need for pricing
+	query = query.Select("price, start_date, end_date")
 
 	query.Find(&sumSubs)
-   
+
 	return sumSubs
 }
 
@@ -99,15 +102,17 @@ func summary(subs []models.Subs, filters models.Subs) int {
 }
 
 func calculatePrice(price int, start, end time.Time) int {
-	month := betweenMonth(start, end)
-	return month * price
+	months := monthsBetween(start, end)
+	return months * price
 }
 
-func betweenMonth(start, end time.Time) int {
-	cnt := 0
-	for !start.Equal(end) {
-		cnt += 1
-		start = start.AddDate(0, 1, 0)
+// monthsBetween returns the number of whole months between start (inclusive) and end (exclusive),
+// matching previous loop semantics that incremented one month at a time until start == end.
+func monthsBetween(start, end time.Time) int {
+	if !start.Before(end) {
+		return 0
 	}
-	return cnt
+	y1, m1, _ := start.Date()
+	y2, m2, _ := end.Date()
+	return int((y2-y1)*12) + int(m2-m1)
 }

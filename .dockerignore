@@ -1,0 +1,25 @@
+# Binaries
+subaggr
+
+# VCS
+.git
+.gitignore
+
+# IDE/editor
+.vscode
+.idea
+
+# Build caches
+node_modules
+coverage
+*.out
+
+# Docker
+Dockerfile*
+compose.yaml
+
+# OS / temp
+*.swp
+*.tmp
+*.log
+.tmp/

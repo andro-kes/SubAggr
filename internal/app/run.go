@@ -2,10 +2,7 @@ package app
 
 import (
 	"log"
-
-	_ "github.com/andro-kes/SubAggr/docs" // импорт сгенерированной документации
-    swaggerFiles "github.com/swaggo/files"
-    ginSwagger "github.com/swaggo/gin-swagger"
+	"os"
 
 	"github.com/andro-kes/SubAggr/internal/handlers"
 	"github.com/andro-kes/SubAggr/internal/database"
@@ -13,6 +10,10 @@ import (
 )
 
 func Run() {
+	if mode := os.Getenv("GIN_MODE"); mode != "" {
+		gin.SetMode(mode)
+	}
+
 	router := gin.Default()
 	router.Use(database.DBMiddleware())
 
@@ -23,7 +24,7 @@ func Run() {
 	router.GET("/SUBS", handlers.ListNotes)
 	router.POST("/SUBS/SUMMARY", handlers.SumPriceSubs)
 
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	registerSwagger(router)
 
 	if err := router.Run(":8000"); err != nil {
 		log.Fatalln("Не удалось запустить сервер")

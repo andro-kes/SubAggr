@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/andro-kes/SubAggr/internal/models"
-	"github.com/andro-kes/SubAggr/internal/utils"
 	"github.com/gin-gonic/gin"
 
 	"gorm.io/driver/postgres"
@@ -25,25 +24,37 @@ func init() {
 		os.Getenv("POSTGRES_PASSWORD"),
 		os.Getenv("POSTGRES_DB"),
 	)
-	
-	openDB(DSN)
+
+	openDBWithRetry(DSN, 10, 3*time.Second)
 }
 
-func openDB(dsn string) {
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	utils.MustNotError(err, "Не удалось открыть базу данных")
+func openDBWithRetry(dsn string, attempts int, delay time.Duration) {
+	for i := 1; i <= attempts; i++ {
+		db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+		if err == nil {
+			sqlDB, err := db.DB()
+			if err != nil {
+				log.Printf("Ошибка при получении *sql.DB: %v", err)
+			} else {
+				sqlDB.SetMaxIdleConns(10)
+				sqlDB.SetMaxOpenConns(100)
+				sqlDB.SetConnMaxLifetime(time.Hour)
+			}
 
-	sqlDB, err := db.DB()
-	if err != nil {
-		log.Fatalf("Ошибка при получении *sql.DB: %v", err)
+			DB = db
+
+			if os.Getenv("AUTO_MIGRATE") != "false" {
+				if err := Migrate(); err != nil {
+					log.Printf("Миграция завершилась с ошибкой: %v", err)
+				}
+			}
+			return
+		}
+
+		log.Printf("Не удалось подключиться к БД (попытка %d/%d): %v", i, attempts, err)
+		time.Sleep(delay)
 	}
-
-    sqlDB.SetMaxIdleConns(10)  
-    sqlDB.SetMaxOpenConns(100)   
-    sqlDB.SetConnMaxLifetime(time.Hour)
-
-	DB = db
-	utils.MustNotError(Migrate(), "Не удалось выполнить миграции")
+	log.Fatalf("Не удалось подключиться к базе данных после %d попыток", attempts)
 }
 
 func Migrate() error {

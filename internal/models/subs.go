@@ -9,9 +9,9 @@ import (
 
 type Subs struct {
 	gorm.Model
-	ServiceName string `json:"service_name"`
+	ServiceName string `json:"service_name" gorm:"index;uniqueIndex:uniq_user_service"`
 	Price int `json:"price"`
-	UserId uuid.UUID `json:"user_id"`
-	StartDate time.Time `json:"start_date"` // MM-YYYY
-	EndDate *time.Time `json:"end_date"` // MM-YYYY
+	UserId uuid.UUID `json:"user_id" gorm:"index;uniqueIndex:uniq_user_service"`
+	StartDate time.Time `json:"start_date" gorm:"index"` // MM-YYYY
+	EndDate *time.Time `json:"end_date" gorm:"index"` // MM-YYYY
 }
