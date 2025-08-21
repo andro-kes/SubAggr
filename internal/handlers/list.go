@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"log"
+	"strconv"
 
 	"github.com/andro-kes/SubAggr/internal/database"
 	"github.com/andro-kes/SubAggr/internal/models"
@@ -16,6 +17,8 @@ import (
 // @Produce json
 // @Param user_id query string false "Фильтр по ID пользователя"
 // @Param service_name query string false "Фильтр по названию сервиса"
+// @Param limit query int false "Количество записей (макс 200)"
+// @Param offset query int false "Смещение для пагинации"
 // @Success 200 {array} models.Subs "Список подписок"
 // @Router /SUBS [get]
 // @Failure 400 {object} map[string]string "Ошибка сервера"
@@ -32,12 +35,29 @@ func ListNotes(c *gin.Context) {
 		query = query.Where("service_name = ?", service)
 	}
 
-	query.Find(&notes)
+	// Pagination with defaults and caps
+	const defaultLimit = 50
+	const maxLimit = 200
+	limit := defaultLimit
+	offset := 0
+	if v, err := strconv.Atoi(c.Query("limit")); err == nil && v > 0 {
+		if v > maxLimit {
+			v = maxLimit
+		}
+		limit = v
+	}
+	if v, err := strconv.Atoi(c.Query("offset")); err == nil && v >= 0 {
+		offset = v
+	}
 
-	if len(notes) == 0 {
-		log.Println("Ни одной подписки не было найдено")
-		c.JSON(200, notes)
+	// Select only required columns for list view
+	query = query.Select("id, service_name, price, user_id, start_date, end_date")
+
+	if err := query.Limit(limit).Offset(offset).Find(&notes).Error; err != nil {
+		log.Println("Ошибка выборки списка:", err)
+		c.JSON(400, gin.H{"Error": "Ошибка сервера"})
 		return
 	}
+
 	c.JSON(200, notes)
 }
