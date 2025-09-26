@@ -10,7 +10,7 @@ import (
 
 // @title Subscriptions API
 // @version 1.0
-// @description API для управления подписками пользователей
+// @description API для управления подписками пользователей в Ed-tech стартапе (агрегация и аналитика подписок)
 // @host localhost:8000
 // @BasePath /
 func main() {

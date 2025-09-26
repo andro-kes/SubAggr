@@ -26,6 +26,11 @@ func CreateNote(c *gin.Context) {
 		return
 	}
 
+    if input.Price < 0 {
+        c.JSON(400, gin.H{"error": "price must be >= 0"})
+        return
+    }
+
 	if !utils.Ok(input.IsValid(), "Невалидная дата") {
 		c.JSON(400, gin.H{"error": "invalid date"})
 		return

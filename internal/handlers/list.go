@@ -53,7 +53,10 @@ func ListNotes(c *gin.Context) {
 	// Select only required columns for list view
 	query = query.Select("id, service_name, price, user_id, start_date, end_date")
 
-	if err := query.Limit(limit).Offset(offset).Find(&notes).Error; err != nil {
+    // Сортировка по времени создания по убыванию
+    query = query.Order("created_at DESC")
+
+    if err := query.Limit(limit).Offset(offset).Find(&notes).Error; err != nil {
 		slog.Error("Ошибка выборки списка", slog.String("error", err.Error()))
 		c.JSON(500, gin.H{"error": "internal server error"})
 		return

@@ -1,7 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "API для управления подписками пользователей",
+        "description": "API для управления подписками пользователей в Ed-tech стартапе (агрегация и аналитика подписок)",
         "title": "Subscriptions API",
         "contact": {},
         "version": "1.0"
@@ -266,7 +266,7 @@
                 }
             }
         },
-        "/SUMSUBS": {
+        "/SUBS/SUMMARY": {
             "post": {
                 "description": "Возвращает сумму цен подписок за период с фильтрацией",
                 "consumes": [

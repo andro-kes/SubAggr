@@ -5,31 +5,30 @@ import (
 )
 
 type Updates struct {
-	Price int `json:"price"`
-	StartDate string `json:"start_date"` // MM-YYYY
-	EndDate string `json:"end_date"` // MM-YYYY
+    // Используем указатели, чтобы различать "поле не прислано" и "значение по умолчанию"
+    Price *int `json:"price"`
+    StartDate *string `json:"start_date"` // MM-YYYY, nil — не менять, "" — сбросить?
+    EndDate *string `json:"end_date"` // MM-YYYY, nil — не менять, "" — сбросить (NULL)
 }
 
-func (updates *Updates) NewSub() (Subs, error) {
-	start, end, err := utils.ParseTime(updates.StartDate, updates.EndDate)
-	if err != nil {
-		return Subs{}, err
-	}
-
-	return Subs{
-		Price: updates.Price,
-		StartDate: *start,
-		EndDate: end,
-	}, nil
-}
+// В контексте обновлений парсинг выполняется в хэндлере, где известно какие поля реально присланы
+// поэтому здесь вспомогательная функция не нужна.
 
 func (updates *Updates) IsValid() bool {
-	if updates.EndDate == "" && updates.StartDate == "" {
-		return true
-	} else if updates.EndDate == "" {
-		return utils.IsValidDate(updates.StartDate)
-	} else if updates.StartDate == "" {
-		return utils.IsValidDate(updates.EndDate)
-	}
-	return utils.IsValidDate(updates.StartDate) && utils.IsValidDate(updates.EndDate)
+    // Валидируем только те поля, что реально присланы (не nil)
+    if updates.StartDate != nil && *updates.StartDate != "" {
+        if !utils.IsValidDate(*updates.StartDate) {
+            return false
+        }
+    }
+    if updates.EndDate != nil && *updates.EndDate != "" {
+        if !utils.IsValidDate(*updates.EndDate) {
+            return false
+        }
+    }
+    // Цена может быть нулевой; если прислана — только проверяем, что не отрицательная
+    if updates.Price != nil && *updates.Price < 0 {
+        return false
+    }
+    return true
 }
